@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:">
+    <D:response>
+        <D:href>{{ file.href }}</D:href>
+        <D:propstat>
+            <D:status>HTTP/1.1 200 OK</D:status>
+            <D:prop>
+                <D:creationdate>{{ file.creationDate|date(constant('DATE_RFC3339')) }}</D:creationdate>
+                <D:getcontentlength>{{ file.contentLength }}</D:getcontentlength>
+                <D:getlastmodified>{{ file.lastModified|date(constant('DATE_RFC1123')) }}</D:getlastmodified>
+                <D:resourcetype>{% if file.resourceType == 'collection' %}<D:collection/>{% else %}{{ file.resourceType }}{% endif %}</D:resourcetype>
+            </D:prop>
+        </D:propstat>
+    </D:response>
+
+    <D:responsedescription> OK.</D:responsedescription>
+</D:multistatus>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<D:prop xmlns:D="DAV:">
+    <D:lockdiscovery>
+        <D:activelock>
+            <D:locktype><D:write/></D:locktype>
+            <D:lockscope><D:exclusive/></D:lockscope>
+            <D:depth>0</D:depth>
+            {#<D:owner>#}
+                {#<D:href></D:href>#}
+            {#</D:owner>#}
+            <D:timeout>Second-300</D:timeout>
+            <D:locktoken>
+                <D:href>{{ token_urn }}</D:href>
+            </D:locktoken>
+            <D:lockroot>
+                <D:href>{{ resource_uri }}</D:href>
+            </D:lockroot>
+        </D:activelock>
+    </D:lockdiscovery>
+</D:prop>

@@ -5,8 +5,11 @@ namespace App\Controller;
 use App\Airship\Webdav\RequestMethods;
 use App\Airship\Webdav\ResponseHeaders;
 use App\Airship\Webdav\ResponseHeaderValues;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration as Framework;
+use Symfony\Component\Cache\CacheItem;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -14,6 +17,7 @@ use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Lock\Factory;
 
 /**
  * @link https://tech.yandex.com/disk/doc/dg/reference/propfind_contains-request-docpage/#propfind_contains-request
@@ -34,14 +38,24 @@ class WebdavController
     private $filesystem;
     private $projectDir;
     private $filesDir;
+    /**
+     * @var Factory
+     */
+    private $lockFactory;
+    /**
+     * @var CacheItemPoolInterface
+     */
+    private $pool;
 
-    public function __construct(LoggerInterface $logger, \Twig_Environment $twig, Filesystem $filesystem, $projectDir)
+    public function __construct(LoggerInterface $logger, \Twig_Environment $twig, Filesystem $filesystem, Factory $lockFactory, CacheItemPoolInterface $pool, $projectDir)
     {
         $this->logger = $logger;
         $this->twig = $twig;
         $this->filesystem = $filesystem;
         $this->projectDir = $projectDir;
         $this->filesDir = $projectDir .'/var/files';
+        $this->lockFactory = $lockFactory;
+        $this->pool = $pool;
     }
 
     /**
@@ -51,12 +65,14 @@ class WebdavController
     public function optionsAction()
     {
         return new Response('', Response::HTTP_OK, [
-            ResponseHeaders::DAV    => ResponseHeaderValues::COMPLIANCE_CLASS_1,
+            ResponseHeaders::DAV    => ResponseHeaderValues::COMPLIANCE_CLASS_2,
             'Content-Length'        => 0,
             'Accepts'               => implode(' ', [
                 RequestMethods::OPTIONS,
                 RequestMethods::GET,
                 RequestMethods::PROPFIND,
+                RequestMethods::LOCK,
+                RequestMethods::UNLOCK,
             ])
         ]);
     }
@@ -123,6 +139,39 @@ class WebdavController
         return new Response("{$resource} does not exist.", 404);
     }
 
+    /**
+     * @Framework\Route("/{resource}", methods={"LOCK"}, name="webdav_share_resource_lock", requirements={"resource"=".+"})
+     */
+    public function lockAction(Request $request)
+    {
+        $resource = $request->attributes->get('resource');
+        $resourceUri = $request->getUri();
+
+        $requestDoc = new \DOMDocument();
+        $requestDoc->loadXML($request->getContent());
+
+        //$this->lockFactory->setLogger($this->logger);
+        $lock = $this->lockFactory->createLock($resource);
+        $lock->acquire();
+
+        $lockTokenUuid = Uuid::uuid4();
+        $urn = $lockTokenUuid->getUrn();
+
+        $resourceLockRecord = $this->pool->getItem($resource);
+        $resourceLockRecord->set($urn);
+        $this->pool->save($resourceLockRecord);
+
+        $xml = $this->twig->render('lock.xml.twig', [
+            'token_urn'    => $urn,
+            'resource_uri' => $resourceUri,
+        ]);
+
+        return new Response($xml, Response::HTTP_OK, [
+            'Content-Type' => 'application/xml; charset="utf-8"',
+            'Lock-Token' => "<{$urn}>",
+        ]);
+    }
+
     private function getPropertiesForFile(string $requestPath): \DOMDocument
     {
         $file = $this->filesDir.$requestPath;
@@ -169,7 +218,6 @@ class WebdavController
             'lastModified' => $dirInfo->getMTime(),
             'contentLength' => $dirInfo->getSize(),
             'creationDate' => $dirInfo->getCTime(),
-
         ];
         $directory = [];
 

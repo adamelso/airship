@@ -2,7 +2,8 @@
 ###> symfony/framework-bundle ###
 /.env
 /public/bundles/
-/var/
+/var/cache
+/var/log
 /vendor/
 ###< symfony/framework-bundle ###
 
@@ -21,7 +22,3 @@ yarn-error.log
 ###> symfony/web-server-bundle ###
 /.web-server-pid
 ###< symfony/web-server-bundle ###
-
-
-!/var/http/*
-!/var/files/*

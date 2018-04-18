@@ -120,7 +120,7 @@ class WebdavController
     }
 
     /**
-     * @Framework\Route("/{resource}", methods={"GET"}, name="webdav_share_resource_get", requirements={"resource"=".+"})
+     * @Framework\Route("/{resource}", methods={"GET", "HEAD"}, name="webdav_share_resource_get", requirements={"resource"=".+"})
      */
     public function resourceGetAction(Request $request)
     {
@@ -133,11 +133,11 @@ class WebdavController
 
         $f = $this->filesDir.$resourceRequestPath;
 
-        if ($this->filesystem->exists($f)) {
-            return new BinaryFileResponse(new \SplFileInfo($f));
+        if (! $this->filesystem->exists($f)) {
+            return new Response("{$resource} does not exist.", 404);
         }
 
-        return new Response("{$resource} does not exist.", 404);
+        return new BinaryFileResponse(new \SplFileInfo($f));
     }
 
     /**

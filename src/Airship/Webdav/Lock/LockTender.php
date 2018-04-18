@@ -45,7 +45,7 @@ class LockTender
 
         $lock->acquire();
 
-        $padlock = $this->pool->getItem($lockToken->getUrn());
+        $padlock = $this->pool->getItem($lockToken->getUuid());
         $padlock->set($lockToken->getResource());
 
         $this->pool->save($padlock);
@@ -55,7 +55,7 @@ class LockTender
 
     public function unlock(LockToken $lockToken)
     {
-        $padlock = $this->pool->getItem($lockToken->getUrn());
+        $padlock = $this->pool->getItem($lockToken->getUuid());
 
         if (! $padlock->isHit()) {
             throw new \RuntimeException('This Lock Token URN does not correspond to any lock.');
@@ -69,6 +69,10 @@ class LockTender
 
         $lock->release();
 
-        $this->pool->deleteItem($padlock);
+        $deleted = $this->pool->deleteItem($padlock->getKey());
+
+        if (! $deleted) {
+            throw new \RuntimeException('Lock was not deleted.');
+        }
     }
 }

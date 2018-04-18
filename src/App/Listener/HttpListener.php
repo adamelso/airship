@@ -13,12 +13,11 @@ class HttpListener implements EventSubscriberInterface
      * @var Filesystem
      */
     private $filesystem;
+
     /**
      * @var string
      */
     private $projectDir;
-
-    private $t;
 
     public function __construct(Filesystem $filesystem, string $projectDir)
     {
@@ -26,22 +25,25 @@ class HttpListener implements EventSubscriberInterface
         $this->projectDir = $projectDir;
     }
 
-    public function onKernelRequest(GetResponseEvent $event)
-    {
-        $this->t = time();
-        $this->filesystem->dumpFile($this->projectDir.'/var/http/'.$this->t.'.request.http', (string) $event->getRequest());
-    }
-
     public function onKernelResponse(FilterResponseEvent $event)
     {
-        $this->filesystem->dumpFile($this->projectDir.'/var/http/'.$this->t.'.response.http', (string) $event->getResponse());
+        $request  = $event->getRequest();
+        $response = $event->getResponse();
 
+        $t = (new \DateTime())->format('Y-m-d--H-i-s');
+        $method = $request->getMethod();
+        $code = $response->getStatusCode();
+
+        $reqFilename = "{$this->projectDir}/var/http/{$t}--{$method}--{$code}-request.http";
+        $resFilename = "{$this->projectDir}/var/http/{$t}--{$method}--{$code}-response.http";
+
+        $this->filesystem->dumpFile($reqFilename, (string) $request);
+        $this->filesystem->dumpFile($resFilename, (string) $response);
     }
 
     public static function getSubscribedEvents()
     {
         return [
-            'kernel.request' => 'onKernelRequest',
             'kernel.response' => 'onKernelResponse',
         ];
     }

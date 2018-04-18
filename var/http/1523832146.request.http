@@ -1,7 +1,0 @@
-GET /it_IT/ciao.txt HTTP/1.1
-Accept:         */*
-Connection:     keep-alive
-Host:           127.0.0.1:8087
-User-Agent:     WebDAVFS/3.0.0 (03008000) Darwin/17.4.0 (x86_64)
-X-Php-Ob-Level: 1
-

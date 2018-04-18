@@ -8,20 +8,14 @@ use Airship\Webdav\RequestHeaders;
 use Airship\Webdav\RequestMethods;
 use Airship\Webdav\ResponseHeaders;
 use Airship\Webdav\ResponseHeaderValues;
-use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
-use Ramsey\Uuid\Uuid;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration as Framework;
-use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Lock\Factory;
-use Symfony\Component\Lock\Key;
-use Symfony\Component\Lock\StoreInterface;
 
 /**
  * @todo Split this class.
@@ -60,6 +54,16 @@ class WebdavController
     }
 
     /**
+     * Will be removed once all methods are implemented.
+     *
+     * @Framework\Route("/{resource}", methods={"POST", "PROPPATCH", "DELETE", "COPY", "MOVE"}, name="webdav_share_resource_wip", requirements={"resource"=".+"})
+     */
+    public function resourceMethodNotYetImplementedAction(Request $request): Response
+    {
+        return new Response('', Response::HTTP_NOT_IMPLEMENTED);
+    }
+
+    /**
      * @Framework\Route("/", methods={"OPTIONS"}, name="webdav_share_options_index")
      * @Framework\Route("/{resource}", methods={"OPTIONS"}, name="webdav_share_options", requirements={"resource"=".+"})
      */
@@ -68,13 +72,7 @@ class WebdavController
         return new Response('', Response::HTTP_OK, [
             ResponseHeaders::DAV    => ResponseHeaderValues::COMPLIANCE_CLASS_2,
             'Content-Length'        => 0,
-            'Accepts'               => implode(' ', [
-                RequestMethods::OPTIONS,
-                RequestMethods::GET,
-                RequestMethods::PROPFIND,
-                RequestMethods::LOCK,
-                RequestMethods::UNLOCK,
-            ])
+            'Accepts'               => implode(' ', RequestMethods::COMPLIANCE_2_SUPPORTED)
         ]);
     }
 
@@ -122,7 +120,7 @@ class WebdavController
     /**
      * @Framework\Route("/{resource}", methods={"GET", "HEAD"}, name="webdav_share_resource_get", requirements={"resource"=".+"})
      */
-    public function resourceGetAction(Request $request)
+    public function resourceGetAction(Request $request): Response
     {
         $resource = $request->attributes->get('resource');
         $resourceRequestPath = '/'.$resource;
@@ -138,6 +136,24 @@ class WebdavController
         }
 
         return new BinaryFileResponse(new \SplFileInfo($f));
+    }
+
+    /**
+     * @Framework\Route("/{resource}", methods={"PUT"}, name="webdav_share_resource_put", requirements={"resource"=".+"})
+     */
+    public function resourcePutAction(Request $request): Response
+    {
+        $resource = $request->attributes->get('resource');
+        $resourceRequestPath = '/'.$resource;
+        $f = $this->filesDir.$resourceRequestPath;
+
+        if (false !== strpos($resource,  '/..')) {
+            throw new \RuntimeException('Nice try.');
+        }
+
+        $this->filesystem->dumpFile($f, $request->getContent());
+
+        return new Response('', Response::HTTP_CREATED);
     }
 
     /**
@@ -208,10 +224,7 @@ class WebdavController
 
         $this->lockTender->unlock(new LockToken(trim($lockTokenHeaderValue, '<>'), $resource));
 
-        return new Response('', Response::HTTP_OK, [
-            'Content-Type' => 'application/xml; charset="utf-8"',
-            RequestHeaders::LOCK_TOKEN => "<{$urn}>",
-        ]);
+        return new Response('', Response::HTTP_NO_CONTENT);
     }
 
     /**

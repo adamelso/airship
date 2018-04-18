@@ -1,0 +1,23 @@
+HTTP/1.0 200 OK
+Cache-Control: no-cache, private
+Content-Type:  application/xml; charset="utf-8"
+Date:          Wed, 18 Apr 2018 19:04:58 GMT
+Lock-Token:    <urn:uuid:35614749-a2b8-47d1-a3fe-3c9f7b726dec>
+
+<?xml version="1.0" encoding="utf-8"?>
+<D:prop xmlns:D="DAV:">
+    <D:lockdiscovery>
+        <D:activelock>
+            <D:locktype><D:write/></D:locktype>
+            <D:lockscope><D:exclusive/></D:lockscope>
+            <D:depth>0</D:depth>
+                                                    <D:timeout>Second-300</D:timeout>
+            <D:locktoken>
+                <D:href>urn:uuid:35614749-a2b8-47d1-a3fe-3c9f7b726dec</D:href>
+            </D:locktoken>
+            <D:lockroot>
+                <D:href>http://127.0.0.1:8000/.DS_Store</D:href>
+            </D:lockroot>
+        </D:activelock>
+    </D:lockdiscovery>
+</D:prop>

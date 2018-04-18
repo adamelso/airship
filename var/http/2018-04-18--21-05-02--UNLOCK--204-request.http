@@ -1,0 +1,11 @@
+UNLOCK /.DS_Store HTTP/1.1
+Accept:         */*
+Connection:     keep-alive
+Content-Length: 0
+Cookie:         sf_redirect=deleted
+Host:           127.0.0.1:8000
+Lock-Token:     <urn:uuid:35614749-a2b8-47d1-a3fe-3c9f7b726dec>
+User-Agent:     WebDAVFS/3.0.0 (03008000) Darwin/17.4.0 (x86_64)
+X-Php-Ob-Level: 1
+Cookie: sf_redirect=deleted
+

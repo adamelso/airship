@@ -2,6 +2,8 @@
 
 namespace Airship\Webdav\Lock;
 
+use Ramsey\Uuid\Uuid;
+
 class LockToken
 {
     /**
@@ -34,6 +36,14 @@ class LockToken
     public function getUrnForHttpHeader(): string
     {
         return "<{$this->urn}>";
+    }
+
+    /**
+     * @return string
+     */
+    public function getUuid(): string
+    {
+        return str_replace('urn:uuid:', '', $this->urn);
     }
 
     /**

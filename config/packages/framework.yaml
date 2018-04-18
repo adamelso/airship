@@ -15,6 +15,14 @@ framework:
         log: true
 
     cache:
+        pools:
+            cache.locktender:
+                adapter: cache.app
+                public: false
+                default_lifetime: 300
+                provider: ~
+                clearer: ~
+
         # Put the unique name of your app here: the prefix seed
         # is used to compute stable namespaces for cache keys.
         #prefix_seed: your_vendor_name/app_name
@@ -30,3 +38,4 @@ framework:
         #app: cache.adapter.apcu
 
     lock: semaphore
+

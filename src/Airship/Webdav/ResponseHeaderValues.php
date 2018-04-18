@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Airship\Webdav;
+namespace Airship\Webdav;
 
 interface ResponseHeaderValues
 {

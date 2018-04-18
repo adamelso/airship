@@ -38,6 +38,7 @@
         "symfony/web-server-bundle": "^4.0"
     },
     "config": {
+        "bin-dir": "bin",
         "preferred-install": {
             "*": "dist"
         },
@@ -45,7 +46,7 @@
     },
     "autoload": {
         "psr-4": {
-            "App\\": "src/"
+            "": "src/"
         }
     },
     "autoload-dev": {

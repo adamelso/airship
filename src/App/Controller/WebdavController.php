@@ -2,24 +2,30 @@
 
 namespace App\Controller;
 
-use App\Airship\Webdav\RequestMethods;
-use App\Airship\Webdav\ResponseHeaders;
-use App\Airship\Webdav\ResponseHeaderValues;
+use Airship\Webdav\Lock\LockTender;
+use Airship\Webdav\Lock\LockToken;
+use Airship\Webdav\RequestHeaders;
+use Airship\Webdav\RequestMethods;
+use Airship\Webdav\ResponseHeaders;
+use Airship\Webdav\ResponseHeaderValues;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration as Framework;
-use Symfony\Component\Cache\CacheItem;
+use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Lock\Factory;
+use Symfony\Component\Lock\Key;
+use Symfony\Component\Lock\StoreInterface;
 
 /**
+ * @todo Split this class.
+ *
  * @link https://tech.yandex.com/disk/doc/dg/reference/propfind_contains-request-docpage/#propfind_contains-request
  */
 class WebdavController
@@ -39,23 +45,18 @@ class WebdavController
     private $projectDir;
     private $filesDir;
     /**
-     * @var Factory
+     * @var LockTender
      */
-    private $lockFactory;
-    /**
-     * @var CacheItemPoolInterface
-     */
-    private $pool;
+    private $lockTender;
 
-    public function __construct(LoggerInterface $logger, \Twig_Environment $twig, Filesystem $filesystem, Factory $lockFactory, CacheItemPoolInterface $pool, $projectDir)
+    public function __construct(LoggerInterface $logger, \Twig_Environment $twig, Filesystem $filesystem, LockTender $lockTender, $projectDir)
     {
         $this->logger = $logger;
         $this->twig = $twig;
         $this->filesystem = $filesystem;
         $this->projectDir = $projectDir;
         $this->filesDir = $projectDir .'/var/files';
-        $this->lockFactory = $lockFactory;
-        $this->pool = $pool;
+        $this->lockTender = $lockTender;
     }
 
     /**
@@ -150,25 +151,66 @@ class WebdavController
         $requestDoc = new \DOMDocument();
         $requestDoc->loadXML($request->getContent());
 
-        //$this->lockFactory->setLogger($this->logger);
-        $lock = $this->lockFactory->createLock($resource);
-        $lock->acquire();
-
-        $lockTokenUuid = Uuid::uuid4();
-        $urn = $lockTokenUuid->getUrn();
-
-        $resourceLockRecord = $this->pool->getItem($resource);
-        $resourceLockRecord->set($urn);
-        $this->pool->save($resourceLockRecord);
+        $lockToken = $this->lockTender->lock($resource);
 
         $xml = $this->twig->render('lock.xml.twig', [
-            'token_urn'    => $urn,
+            'token_urn'    => $lockToken->getUrn(),
             'resource_uri' => $resourceUri,
         ]);
 
         return new Response($xml, Response::HTTP_OK, [
             'Content-Type' => 'application/xml; charset="utf-8"',
-            'Lock-Token' => "<{$urn}>",
+            RequestHeaders::LOCK_TOKEN => $lockToken->getUrnForHttpHeader(),
+        ]);
+    }
+
+    /**
+     * 9.11. UNLOCK Method
+     *
+     * The UNLOCK method removes the lock identified by the lock token in
+     * the Lock-Token request header.  The Request-URI MUST identify a
+     * resource within the scope of the lock.
+     *
+     * Note that use of the Lock-Token header to provide the lock token is
+     * not consistent with other state-changing methods, which all require
+     * an If header with the lock token.  Thus, the If header is not needed
+     * to provide the lock token.  Naturally, when the If header is present,
+     * it has its normal meaning as a conditional header.
+     *
+     * For a successful response to this method, the server MUST delete the
+     * lock entirely.
+     *
+     * If all resources that have been locked under the submitted lock token
+     * cannot be unlocked, then the UNLOCK request MUST fail.
+     *
+     * A successful response to an UNLOCK method does not mean that the
+     * resource is necessarily unlocked.  It means that the specific lock
+     * corresponding to the specified token no longer exists.
+     *
+     * Any DAV-compliant resource that supports the LOCK method MUST support
+     * the UNLOCK method.
+     *
+     * This method is idempotent, but not safe (see Section 9.1 of
+     * [RFC2616]).  Responses to this method MUST NOT be cached.
+     *
+     * @Framework\Route("/{resource}", methods={"UNLOCK"}, name="webdav_share_resource_unlock", requirements={"resource"=".+"})
+     */
+    public function unlockAction(Request $request): Response
+    {
+        $resource = $request->attributes->get('resource');
+        $resourceUri = $request->getUri();
+
+        $lockTokenHeaderValue = $request->headers->get(RequestHeaders::LOCK_TOKEN, null);
+
+        if (! $lockTokenHeaderValue) {
+            return new Response('No lock token was provided.', Response::HTTP_BAD_REQUEST);
+        }
+
+        $this->lockTender->unlock(new LockToken(trim($lockTokenHeaderValue, '<>'), $resource));
+
+        return new Response('', Response::HTTP_OK, [
+            'Content-Type' => 'application/xml; charset="utf-8"',
+            RequestHeaders::LOCK_TOKEN => "<{$urn}>",
         ]);
     }
 

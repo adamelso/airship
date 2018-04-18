@@ -214,6 +214,50 @@ class WebdavController
         ]);
     }
 
+    /**
+     * 9.3.  MKCOL Method
+     *
+     * MKCOL creates a new collection resource at the location specified by
+     * the Request-URI.  If the Request-URI is already mapped to a resource,
+     * then the MKCOL MUST fail.  During MKCOL processing, a server MUST
+     * make the Request-URI an internal member of its parent collection,
+     * unless the Request-URI is "/".  If no such ancestor exists, the
+     * method MUST fail.  When the MKCOL operation creates a new collection
+     * resource, all ancestors MUST already exist, or the method MUST fail
+     * with a 409 (Conflict) status code.  For example, if a request to
+     * create collection /a/b/c/d/ is made, and /a/b/c/ does not exist, the
+     * request must fail.
+     *
+     * When MKCOL is invoked without a request body, the newly created
+     * collection SHOULD have no members.
+     *
+     * A MKCOL request message may contain a message body.  The precise
+     * behavior of a MKCOL request when the body is present is undefined,
+     * but limited to creating collections, members of a collection, bodies
+     * of members, and properties on the collections or members.  If the
+     * server receives a MKCOL request entity type it does not support or
+     * understand, it MUST respond with a 415 (Unsupported Media Type)
+     * status code.  If the server decides to reject the request based on
+     * the presence of an entity or the type of an entity, it should use the
+     * 415 (Unsupported Media Type) status code.
+     *
+     * This method is idempotent, but not safe (see Section 9.1 of
+     * [RFC2616]).  Responses to this method MUST NOT be cached.
+     *
+     * @Framework\Route("/{resource}", methods={"MKCOL"}, name="webdav_share_resource_mkcol", requirements={"resource"=".+"})
+     */
+    public function mkcolAction(Request $request): Response
+    {
+        $resource = $request->attributes->get('resource');
+
+        $dir = "{$this->filesDir}/{$resource}";
+
+        // @todo Don't make recursively, return HTTP 409 according to RFC.
+        $this->filesystem->mkdir($dir);
+
+        return new Response('', Response::HTTP_CREATED);
+    }
+
     private function getPropertiesForFile(string $requestPath): \DOMDocument
     {
         $file = $this->filesDir.$requestPath;

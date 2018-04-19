@@ -56,11 +56,11 @@ class WebdavController
     /**
      * Will be removed once all methods are implemented.
      *
-     * @Framework\Route("/{resource}", methods={"POST", "PROPPATCH", "DELETE", "COPY", "MOVE"}, name="webdav_share_resource_wip", requirements={"resource"=".+"})
+     * @Framework\Route("/{resource}", methods={"POST", "PROPPATCH", "COPY", "MOVE"}, name="webdav_share_resource_wip", requirements={"resource"=".+"})
      */
     public function resourceMethodNotYetImplementedAction(Request $request): Response
     {
-        return new Response('', Response::HTTP_NOT_IMPLEMENTED);
+        return new Response('', Response::HTTP_METHOD_NOT_ALLOWED);
     }
 
     /**
@@ -163,6 +163,38 @@ class WebdavController
 
         return new Response('', Response::HTTP_CREATED);
     }
+
+    /**
+     * @Framework\Route("/{resource}", methods={"DELETE"}, name="webdav_share_resource_delete", requirements={"resource"=".+"})
+     */
+    public function resourceDeleteAction(Request $request): Response
+    {
+        $resource = $request->attributes->get('resource');
+        $resourceRequestPath = '/'.$resource;
+        $f = $this->filesDir.$resourceRequestPath;
+
+        if (false !== strpos($resource,  '/..')) {
+            throw new \RuntimeException('Nope.');
+        }
+
+        // @todo
+        if (is_dir($f)) {
+            return new Response('', Response::HTTP_NOT_IMPLEMENTED);
+        }
+
+        $ifHeaderValue = $request->headers->get(RequestHeaders::IF);
+        preg_match('/\(\<(urn:uuid:.+)\>\)/', $ifHeaderValue, $matches);
+        $lockTokenUrn = $matches[1] ?? null;
+
+        $keyring = new Keyring($lockTokenUrn, $resource);
+
+        $this->lockTender->enforce($keyring);
+
+        $this->filesystem->remove($f);
+
+        return new Response('', Response::HTTP_NO_CONTENT);
+    }
+
 
     /**
      * @Framework\Route("/{resource}", methods={"LOCK"}, name="webdav_share_resource_lock", requirements={"resource"=".+"})

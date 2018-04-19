@@ -155,7 +155,7 @@ class WebdavController
         preg_match('/\(\<(urn:uuid:.+)\>\)/', $ifHeaderValue, $matches);
         $lockTokenUrn = $matches[1] ?? null;
 
-        $keyring = new Keyring($lockTokenUrn, $resource);
+        $keyring = new Keyring($resource, $lockTokenUrn);
 
         $this->lockTender->enforce($keyring);
 
@@ -186,7 +186,7 @@ class WebdavController
         preg_match('/\(\<(urn:uuid:.+)\>\)/', $ifHeaderValue, $matches);
         $lockTokenUrn = $matches[1] ?? null;
 
-        $keyring = new Keyring($lockTokenUrn, $resource);
+        $keyring = new Keyring($resource, $lockTokenUrn);
 
         $this->lockTender->enforce($keyring);
 

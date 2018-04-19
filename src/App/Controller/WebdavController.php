@@ -3,7 +3,7 @@
 namespace App\Controller;
 
 use Airship\Webdav\Lock\LockTender;
-use Airship\Webdav\Lock\LockToken;
+use Airship\Webdav\Lock\Keyring;
 use Airship\Webdav\RequestHeaders;
 use Airship\Webdav\RequestMethods;
 use Airship\Webdav\ResponseHeaders;
@@ -151,6 +151,14 @@ class WebdavController
             throw new \RuntimeException('Nice try.');
         }
 
+        $ifHeaderValue = $request->headers->get(RequestHeaders::IF);
+        preg_match('/\(\<(urn:uuid:.+)\>\)/', $ifHeaderValue, $matches);
+        $lockTokenUrn = $matches[1] ?? null;
+
+        $keyring = new Keyring($lockTokenUrn, $resource);
+
+        $this->lockTender->enforce($keyring);
+
         $this->filesystem->dumpFile($f, $request->getContent());
 
         return new Response('', Response::HTTP_CREATED);
@@ -170,13 +178,13 @@ class WebdavController
         $lockToken = $this->lockTender->lock($resource);
 
         $xml = $this->twig->render('lock.xml.twig', [
-            'token_urn'    => $lockToken->getUrn(),
+            'token_urn'    => $lockToken->getLockTokenUrn(),
             'resource_uri' => $resourceUri,
         ]);
 
         return new Response($xml, Response::HTTP_OK, [
             'Content-Type' => 'application/xml; charset="utf-8"',
-            RequestHeaders::LOCK_TOKEN => $lockToken->getUrnForHttpHeader(),
+            RequestHeaders::LOCK_TOKEN => $lockToken->getLockTokenUrnForHttpHeader(),
         ]);
     }
 
@@ -222,7 +230,7 @@ class WebdavController
             return new Response('No lock token was provided.', Response::HTTP_BAD_REQUEST);
         }
 
-        $this->lockTender->unlock(new LockToken(trim($lockTokenHeaderValue, '<>'), $resource));
+        $this->lockTender->unlock(new Keyring($resource, trim($lockTokenHeaderValue, '<>')));
 
         return new Response('', Response::HTTP_NO_CONTENT);
     }

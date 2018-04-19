@@ -2,7 +2,7 @@
 
 namespace spec\Airship\Webdav\Lock;
 
-use Airship\Webdav\Lock\LockToken;
+use Airship\Webdav\Lock\Keyring;
 use Airship\Webdav\Lock\LockTender;
 use PhpSpec\ObjectBehavior;
 use Prophecy\Argument;
@@ -14,7 +14,7 @@ class LockTenderSpec extends ObjectBehavior
         $this->shouldHaveType(LockTender::class);
     }
 
-    function it_locks_resources(LockToken $key)
+    function it_locks_resources(Keyring $key)
     {
         $this->lock('hello.txt')->shouldReturn($key);
     }

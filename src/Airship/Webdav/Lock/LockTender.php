@@ -6,6 +6,9 @@ use Psr\Cache\CacheItemPoolInterface;
 use Ramsey\Uuid\UuidFactoryInterface;
 use Symfony\Component\Lock\Factory;
 
+/**
+ * @todo Refresh method.
+ */
 class LockTender
 {
     /**
@@ -30,14 +33,14 @@ class LockTender
         $this->pool = $pool;
     }
 
-    public function lock(string $resource): LockToken
+    public function lock(string $resource): Keyring
     {
         $lock = $this->lockFactory->createLock($resource);
 
         $uuid = $this->uuidFactory->uuid4();
         $urn = $uuid->getUrn();
 
-        $lockToken = new LockToken($urn, $resource);
+        $keyring = new Keyring($resource, $urn);
 
         if ($lock->isAcquired()) {
             throw new \RuntimeException('Already locked.');
@@ -45,34 +48,70 @@ class LockTender
 
         $lock->acquire();
 
-        $padlock = $this->pool->getItem($lockToken->getUuid());
-        $padlock->set($lockToken->getResource());
+        $lockpin = $this->pool->getItem($keyring->getLockTokenUuid());
+        $lockpin->set($keyring->getResource());
 
-        $this->pool->save($padlock);
+        $this->pool->save($lockpin);
 
-        return $lockToken;
+        return $keyring;
     }
 
-    public function unlock(LockToken $lockToken)
+    public function unlock(Keyring $keyring)
     {
-        $padlock = $this->pool->getItem($lockToken->getUuid());
+        $lockpin = $this->pool->getItem($keyring->getLockTokenUuid());
 
-        if (! $padlock->isHit()) {
-            throw new \RuntimeException('This Lock Token URN does not correspond to any lock.');
+        if (! $lockpin->isHit()) {
+            throw new \RuntimeException('The Lock Token URN does not correspond to any locked resource.');
         }
 
-        if ($lockToken->getResource() !== $padlock->get()) {
-            throw new \RuntimeException('This Lock Token URN does not unlock the requested resource.');
+        if ($keyring->getResource() !== $lockpin->get()) {
+            throw new \RuntimeException('The Lock Token URN does not unlock the requested resource.');
         }
 
-        $lock = $this->lockFactory->createLock($lockToken->getResource());
+        $lock = $this->lockFactory->createLock($keyring->getResource());
 
         $lock->release();
 
-        $deleted = $this->pool->deleteItem($padlock->getKey());
+        $deleted = $this->pool->deleteItem($lockpin->getKey());
 
         if (! $deleted) {
             throw new \RuntimeException('Lock was not deleted.');
+        }
+    }
+
+    public function breakLock(Keyring $keyring)
+    {
+        $lockpin = $this->pool->getItem($keyring->getLockTokenUuid());
+        $lock = $this->lockFactory->createLock($keyring->getResource());
+        $lock->release();
+
+        $this->pool->deleteItem($lockpin->getKey());
+    }
+
+    public function enforce(Keyring $keyring)
+    {
+        $lock = $this->lockFactory->createLock($keyring->getResource());
+
+        if ($lock->isAcquired() && $lock->isExpired()) {
+            $this->breakLock($keyring);
+        }
+
+        if (! $lock->isAcquired()) {
+            return;
+        }
+
+        if (! $keyring->getLockTokenUuid()) {
+            throw new \RuntimeException('Cannot attempt to access a locked resource without a lock token.');
+        }
+
+        $lockpin = $this->pool->getItem($keyring->getLockTokenUuid());
+
+        if (! $lockpin->isHit()) {
+            throw new \RuntimeException('The Lock Token URN does not correspond to any locked resource.');
+        }
+
+        if ($keyring->getResource() !== $lockpin->get()) {
+            throw new \RuntimeException('The Lock Token URN does not unlock the requested resource.');
         }
     }
 }

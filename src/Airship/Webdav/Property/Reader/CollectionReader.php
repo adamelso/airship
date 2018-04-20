@@ -2,6 +2,7 @@
 
 namespace Airship\Webdav\Property\Reader;
 
+use Airship\Webdav\Property\Href;
 use Airship\Webdav\Property\Reader;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
@@ -55,7 +56,7 @@ class CollectionReader implements Reader
 
         foreach ($finder as $item) {
             $directory[] = [
-                'href' => '/' . $item->getRelativePathname(),
+                'href' => '/' . (string) new Href($item->getRelativePathname()),
                 'lastModified' => $item->getMTime(),
                 'contentLength' => $item->isDir() ? 0 : $item->getSize(),
                 'creationDate' => $item->getCTime(),

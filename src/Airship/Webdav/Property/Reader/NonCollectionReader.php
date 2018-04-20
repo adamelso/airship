@@ -2,6 +2,7 @@
 
 namespace Airship\Webdav\Property\Reader;
 
+use Airship\Webdav\Property\Href;
 use Airship\Webdav\Property\Reader;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
@@ -49,7 +50,7 @@ class NonCollectionReader implements Reader
         $fileInfo = new \SplFileInfo($file);
 
         $f = [
-            'href' => $this->filesystem->makePathRelative($file, $this->filesDir),
+            'href' => (string) new Href($this->filesystem->makePathRelative($file, $this->filesDir)),
             'lastModified' => $fileInfo->getMTime(),
             'contentLength' => $fileInfo->isDir() ? 0 : $fileInfo->getSize(),
             'creationDate' => $fileInfo->getCTime(),

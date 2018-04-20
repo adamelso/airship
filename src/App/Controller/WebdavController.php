@@ -2,8 +2,11 @@
 
 namespace App\Controller;
 
+use Airship\Webdav\Filesystem\Locator;
 use Airship\Webdav\Lock\LockTender;
 use Airship\Webdav\Lock\Keyring;
+use Airship\Webdav\Property\Reader\CollectionReader;
+use Airship\Webdav\Property\Reader\NonCollectionReader;
 use Airship\Webdav\RequestHeaders;
 use Airship\Webdav\RequestMethods;
 use Airship\Webdav\ResponseHeaders;
@@ -11,9 +14,7 @@ use Airship\Webdav\ResponseHeaderValues;
 use Psr\Log\LoggerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration as Framework;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -25,32 +26,49 @@ use Symfony\Component\HttpFoundation\Response;
 class WebdavController
 {
     /**
+     * @var Locator
+     */
+    private $locator;
+
+    /**
      * @var LoggerInterface
      */
     private $logger;
+
     /**
      * @var \Twig_Environment
      */
     private $twig;
+
     /**
      * @var Filesystem
      */
     private $filesystem;
-    private $projectDir;
-    private $filesDir;
+
     /**
      * @var LockTender
      */
     private $lockTender;
 
-    public function __construct(LoggerInterface $logger, \Twig_Environment $twig, Filesystem $filesystem, LockTender $lockTender, $projectDir)
+    /**
+     * @var CollectionReader
+     */
+    private $collectionReader;
+
+    /**
+     * @var NonCollectionReader
+     */
+    private $nonCollectionReader;
+
+    public function __construct(Locator $locator, LoggerInterface $logger, \Twig_Environment $twig, Filesystem $filesystem, LockTender $lockTender, CollectionReader $collectionReader, NonCollectionReader $nonCollectionReader)
     {
+        $this->locator = $locator;
         $this->logger = $logger;
         $this->twig = $twig;
         $this->filesystem = $filesystem;
-        $this->projectDir = $projectDir;
-        $this->filesDir = $projectDir .'/var/files';
         $this->lockTender = $lockTender;
+        $this->collectionReader = $collectionReader;
+        $this->nonCollectionReader = $nonCollectionReader;
     }
 
     /**
@@ -83,9 +101,9 @@ class WebdavController
      */
     public function indexAction(Request $request)
     {
-        $doc = $this->getPropertiesForDirectory('/');
+        $doc = $this->collectionReader->asXmlDocument('/');
 
-        return new Response($doc->saveXML(),Response::HTTP_MULTI_STATUS, ['Content-Type' => 'application/xml']);
+        return new Response($doc->saveXML(),Response::HTTP_MULTI_STATUS, ['Content-Type' => 'application/xml; charset="utf-8"']);
     }
 
     /**
@@ -100,21 +118,21 @@ class WebdavController
             throw new \RuntimeException('Nice try.');
         }
 
-        $f = $this->filesDir.$resourceRequestPath;
+        $f = $this->locator->getFilesDir().$resourceRequestPath;
 
         if ($this->filesystem->exists($f)) {
             $info = new \SplFileInfo($f);
 
             if ($info->isDir()) {
-                $doc = $this->getPropertiesForDirectory($resourceRequestPath);
+                $doc = $this->collectionReader->asXmlDocument($resourceRequestPath);
             } else {
-                $doc = $this->getPropertiesForFile($resourceRequestPath);
+                $doc = $this->nonCollectionReader->asXmlDocument($resourceRequestPath);
             }
 
-            return new Response($doc->saveXML(),Response::HTTP_MULTI_STATUS, ['Content-Type' => 'application/xml']);
+            return new Response($doc->saveXML(),Response::HTTP_MULTI_STATUS, ['Content-Type' => 'application/xml; charset="utf-8"']);
         }
 
-        return new Response("{$resource} does not exist.", 404);
+        return new Response("{$f} does not exist. dir {$this->locator->getFilesDir()}", 404);
     }
 
     /**
@@ -129,7 +147,7 @@ class WebdavController
             throw new \RuntimeException('Nice try.');
         }
 
-        $f = $this->filesDir.$resourceRequestPath;
+        $f = $this->locator->getFilesDir().$resourceRequestPath;
 
         if (! $this->filesystem->exists($f)) {
             return new Response("{$resource} does not exist.", 404);
@@ -145,7 +163,7 @@ class WebdavController
     {
         $resource = $request->attributes->get('resource');
         $resourceRequestPath = '/'.$resource;
-        $f = $this->filesDir.$resourceRequestPath;
+        $f = $this->locator->getFilesDir().$resourceRequestPath;
 
         if (false !== strpos($resource,  '/..')) {
             throw new \RuntimeException('Nice try.');
@@ -171,7 +189,7 @@ class WebdavController
     {
         $resource = $request->attributes->get('resource');
         $resourceRequestPath = '/'.$resource;
-        $f = $this->filesDir.$resourceRequestPath;
+        $f = $this->locator->getFilesDir().$resourceRequestPath;
 
         if (false !== strpos($resource,  '/..')) {
             throw new \RuntimeException('Nope.');
@@ -303,86 +321,11 @@ class WebdavController
     {
         $resource = $request->attributes->get('resource');
 
-        $dir = "{$this->filesDir}/{$resource}";
+        $dir = "{$this->locator->getFilesDir()}/{$resource}";
 
         // @todo Don't make recursively, return HTTP 409 according to RFC.
         $this->filesystem->mkdir($dir);
 
         return new Response('', Response::HTTP_CREATED);
-    }
-
-    private function getPropertiesForFile(string $requestPath): \DOMDocument
-    {
-        $file = $this->filesDir.$requestPath;
-        $fileInfo = new \SplFileInfo($file);
-
-        $f = [
-            'href' => $this->filesystem->makePathRelative($file, $this->filesDir),
-            'lastModified' => $fileInfo->getMTime(),
-            'contentLength' => $fileInfo->isDir() ? 0 : $fileInfo->getSize(),
-            'creationDate' => $fileInfo->getCTime(),
-            'resourceType' => $fileInfo->isDir()
-                ? 'collection'
-                : MimeTypeGuesser::getInstance()->guess($fileInfo->getPathname()),
-        ];
-
-        $xmlIn = $this->twig->render('propfind-file.xml.twig', [
-            'file' => $f,
-        ]);
-
-        $doc = new \DOMDocument();
-        $doc->loadXML($xmlIn);
-
-        $doc->preserveWhiteSpace = false;
-        $doc->formatOutput = true;
-
-        return $doc;
-    }
-
-    /**
-     * @return \DOMDocument
-     */
-    private function getPropertiesForDirectory(string $requestPath): \DOMDocument
-    {
-        $dir = $this->filesDir.$requestPath;
-        $dirInfo = new \SplFileInfo($dir);
-
-        $finder = new Finder();
-
-        $finder->in($dir)->depth(0);
-
-
-        $root = [
-            'href' => '/',
-            'lastModified' => $dirInfo->getMTime(),
-            'contentLength' => $dirInfo->getSize(),
-            'creationDate' => $dirInfo->getCTime(),
-        ];
-        $directory = [];
-
-        foreach ($finder as $item) {
-            $directory[] = [
-                'href' => '/' . $item->getRelativePathname(),
-                'lastModified' => $item->getMTime(),
-                'contentLength' => $item->isDir() ? 0 : $item->getSize(),
-                'creationDate' => $item->getCTime(),
-                'resourceType' => $item->isDir()
-                    ? 'collection'
-                    : MimeTypeGuesser::getInstance()->guess($item->getPathname()),
-            ];
-        }
-
-        $xmlIn = $this->twig->render('propfind-collection.xml.twig', [
-            'collection' => $root,
-            'directory' => $directory,
-        ]);
-
-        $doc = new \DOMDocument();
-        $doc->loadXML($xmlIn);
-
-        $doc->preserveWhiteSpace = false;
-        $doc->formatOutput = true;
-
-        return $doc;
     }
 }

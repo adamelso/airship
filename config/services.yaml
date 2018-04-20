@@ -2,6 +2,7 @@
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
     locale: 'en'
+    airship.files_dir: '%kernel.project_dir%/var/files'
 
 services:
     # default configuration for services in *this* file
@@ -33,6 +34,24 @@ services:
             - '@lock.factory'
             - '@Ramsey\Uuid\UuidFactory'
             - '@cache.locktender'
+
+    Airship\Webdav\Property\Reader\CollectionReader:
+        class: Airship\Webdav\Property\Reader\CollectionReader
+        arguments:
+            - '%airship.files_dir%'
+            - '@twig'
+
+    Airship\Webdav\Property\Reader\NonCollectionReader:
+        class: Airship\Webdav\Property\Reader\NonCollectionReader
+        arguments:
+            - '%airship.files_dir%'
+            - '@twig'
+            - '@filesystem'
+
+    Airship\Webdav\Filesystem\Locator:
+        class: Airship\Webdav\Filesystem\Locator
+        arguments:
+            - '%airship.files_dir%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

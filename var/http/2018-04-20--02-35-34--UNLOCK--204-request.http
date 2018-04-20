@@ -1,0 +1,11 @@
+UNLOCK /birds/._%D0%B3%D0%BE%D0%BB%D1%83%D0%B1%D0%BA%D0%B0.jpeg HTTP/1.1
+Accept:         */*
+Connection:     keep-alive
+Content-Length: 0
+Cookie:         sf_redirect=deleted
+Host:           127.0.0.1:8000
+Lock-Token:     <urn:uuid:74c59718-9600-4e10-b795-901236cac1cf>
+User-Agent:     WebDAVFS/3.0.0 (03008000) Darwin/17.5.0 (x86_64)
+X-Php-Ob-Level: 1
+Cookie: sf_redirect=deleted
+

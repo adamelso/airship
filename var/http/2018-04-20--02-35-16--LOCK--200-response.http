@@ -1,0 +1,23 @@
+HTTP/1.0 200 OK
+Cache-Control: no-cache, private
+Content-Type:  application/xml; charset="utf-8"
+Date:          Fri, 20 Apr 2018 00:35:16 GMT
+Lock-Token:    <urn:uuid:aece8075-2e8c-4296-b7e9-c5d609506593>
+
+<?xml version="1.0" encoding="utf-8"?>
+<D:prop xmlns:D="DAV:">
+    <D:lockdiscovery>
+        <D:activelock>
+            <D:locktype><D:write/></D:locktype>
+            <D:lockscope><D:exclusive/></D:lockscope>
+            <D:depth>0</D:depth>
+                                                    <D:timeout>Second-300</D:timeout>
+            <D:locktoken>
+                <D:href>urn:uuid:aece8075-2e8c-4296-b7e9-c5d609506593</D:href>
+            </D:locktoken>
+            <D:lockroot>
+                <D:href>http://127.0.0.1:8000/birds/.DS_Store</D:href>
+            </D:lockroot>
+        </D:activelock>
+    </D:lockdiscovery>
+</D:prop>

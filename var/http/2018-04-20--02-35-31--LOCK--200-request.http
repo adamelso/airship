@@ -1,0 +1,21 @@
+LOCK /birds/._%D0%B3%D0%BE%D0%BB%D1%83%D0%B1%D0%BA%D0%B0.jpeg HTTP/1.1
+Accept:         */*
+Connection:     keep-alive
+Content-Length: 229
+Content-Type:   text/xml; charset="utf-8"
+Cookie:         sf_redirect=%7B%22token%22%3A%221cfbd6%22%2C%22route%22%3A%22webdav_share_resource_put%22%2C%22method%22%3A%22PUT%22%2C%22controller%22%3A%7B%22class%22%3A%22App%5C%5CController%5C%5CWebdavController%22%2C%22method%22%3A%22resourcePutAction%22%2C%22file%22%3A%22%5C%2FUsers%5C%2Fadam%5C%2FSites%5C%2Fairship%5C%2Fsrc%5C%2FApp%5C%2FController%5C%2FWebdavController.php%22%2C%22line%22%3A162%7D%2C%22status_code%22%3A201%2C%22status_text%22%3A%22Created%22%7D
+Depth:          0
+Host:           127.0.0.1:8000
+Timeout:        Second-600
+User-Agent:     WebDAVFS/3.0.0 (03008000) Darwin/17.5.0 (x86_64)
+X-Php-Ob-Level: 1
+Cookie: sf_redirect={"token":"1cfbd6","route":"webdav_share_resource_put","method":"PUT","controller":{"class":"App\\Controller\\WebdavController","method":"resourcePutAction","file":"\/Users\/adam\/Sites\/airship\/src\/App\/Controller\/WebdavController.php","line":162},"status_code":201,"status_text":"Created"}
+
+<?xml version="1.0" encoding="utf-8"?>
+<D:lockinfo xmlns:D="DAV:">
+<D:lockscope><D:exclusive/></D:lockscope>
+<D:locktype><D:write/></D:locktype>
+<D:owner>
+<D:href>http://www.apple.com/webdav_fs/</D:href>
+</D:owner>
+</D:lockinfo>

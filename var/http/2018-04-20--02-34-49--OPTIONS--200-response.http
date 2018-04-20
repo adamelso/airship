@@ -1,0 +1,7 @@
+HTTP/1.0 200 OK
+Accepts:        OPTIONS HEAD GET PUT POST DELETE PROPFIND PROPPATCH COPY MOVE LOCK UNLOCK
+Cache-Control:  no-cache, private
+Content-Length: 0
+Date:           Fri, 20 Apr 2018 00:34:49 GMT
+Dav:            2
+

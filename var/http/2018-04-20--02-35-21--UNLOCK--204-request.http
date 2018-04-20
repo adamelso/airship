@@ -1,0 +1,11 @@
+UNLOCK /birds/._.DS_Store HTTP/1.1
+Accept:         */*
+Connection:     keep-alive
+Content-Length: 0
+Cookie:         sf_redirect=deleted
+Host:           127.0.0.1:8000
+Lock-Token:     <urn:uuid:bac7133f-a882-41a0-b8d5-6a1cd82b4c76>
+User-Agent:     WebDAVFS/3.0.0 (03008000) Darwin/17.5.0 (x86_64)
+X-Php-Ob-Level: 1
+Cookie: sf_redirect=deleted
+

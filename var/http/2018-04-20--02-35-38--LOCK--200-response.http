@@ -1,0 +1,23 @@
+HTTP/1.0 200 OK
+Cache-Control: no-cache, private
+Content-Type:  application/xml; charset="utf-8"
+Date:          Fri, 20 Apr 2018 00:35:38 GMT
+Lock-Token:    <urn:uuid:06b57bde-e1f1-4aa5-9ce5-6987088f20c7>
+
+<?xml version="1.0" encoding="utf-8"?>
+<D:prop xmlns:D="DAV:">
+    <D:lockdiscovery>
+        <D:activelock>
+            <D:locktype><D:write/></D:locktype>
+            <D:lockscope><D:exclusive/></D:lockscope>
+            <D:depth>0</D:depth>
+                                                    <D:timeout>Second-300</D:timeout>
+            <D:locktoken>
+                <D:href>urn:uuid:06b57bde-e1f1-4aa5-9ce5-6987088f20c7</D:href>
+            </D:locktoken>
+            <D:lockroot>
+                <D:href>http://127.0.0.1:8000/._birds</D:href>
+            </D:lockroot>
+        </D:activelock>
+    </D:lockdiscovery>
+</D:prop>

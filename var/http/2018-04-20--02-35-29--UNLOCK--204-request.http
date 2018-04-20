@@ -1,0 +1,11 @@
+UNLOCK /birds/._goldfinch.jpg HTTP/1.1
+Accept:         */*
+Connection:     keep-alive
+Content-Length: 0
+Cookie:         sf_redirect=deleted
+Host:           127.0.0.1:8000
+Lock-Token:     <urn:uuid:a1b83614-ce7e-4332-8e7a-d853655d2102>
+User-Agent:     WebDAVFS/3.0.0 (03008000) Darwin/17.5.0 (x86_64)
+X-Php-Ob-Level: 1
+Cookie: sf_redirect=deleted
+

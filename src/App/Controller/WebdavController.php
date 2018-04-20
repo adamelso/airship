@@ -8,9 +8,11 @@ use Airship\Webdav\Lock\Keyring;
 use Airship\Webdav\Property\Reader\CollectionReader;
 use Airship\Webdav\Property\Reader\NonCollectionReader;
 use Airship\Webdav\RequestHeaders;
+use Airship\Webdav\RequestHeaderValues;
 use Airship\Webdav\RequestMethods;
 use Airship\Webdav\ResponseHeaders;
 use Airship\Webdav\ResponseHeaderValues;
+use GuzzleHttp\Psr7\Uri;
 use Psr\Log\LoggerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration as Framework;
 use Symfony\Component\Filesystem\Filesystem;
@@ -325,6 +327,72 @@ class WebdavController
 
         // @todo Don't make recursively, return HTTP 409 according to RFC.
         $this->filesystem->mkdir($dir);
+
+        return new Response('', Response::HTTP_CREATED);
+    }
+
+    /**
+     * Not used by macOS Finder it seems. When copying, it downloads the file (GET) then uploads it (PUT).
+     *
+     * 9.8.1.  COPY for Non-collection Resources
+     * -----------------------------------------
+     *
+     *  When the source resource is not a collection, the result of the COPY
+     *  method is the creation of a new resource at the destination whose
+     *  state and behavior match that of the source resource as closely as
+     *  possible.  Since the environment at the destination may be different
+     *  than at the source due to factors outside the scope of control of the
+     *  server, such as the absence of resources required for correct
+     *  operation, it may not be possible to completely duplicate the
+     *  behavior of the resource at the destination.  Subsequent alterations
+     *  to the destination resource will not modify the source resource.
+     *  Subsequent alterations to the source resource will not modify the
+     *  destination resource.
+     *
+     * @Framework\Route("/{resource}", methods={"COPY"}, name="webdav_share_resource_copy", requirements={"resource"=".+"})
+     */
+    public function copyAction(Request $request): Response
+    {
+        $resource    = $request->attributes->get('resource');
+        $destination = $request->headers->get(RequestHeaders::DESTINATION);
+        $overwrite   = $request->headers->get(RequestHeaders::OVERWRITE, RequestHeaderValues::OVERWRITE_T);
+
+        if (! $destination) {
+            // @todo
+        }
+
+        $uri = new Uri($destination);
+
+        // @todo Locator needs to be aware of the base URL the controller is mounted to.
+        $sourceFilePath      = $this->locator->resolveAbsolutePath($resource);
+        $destinationFilePath = $this->locator->resolveAbsolutePath($uri->getPath());
+
+        if ($sourceFilePath === $destinationFilePath) {
+            return new Response('', Response::HTTP_FORBIDDEN);
+        }
+
+        $shouldNotOverwrite       = RequestHeaderValues::OVERWRITE_F === $overwrite;
+        $destinationAlreadyExists = $this->filesystem->exists($destinationFilePath);
+        $parentDoesNotExist       = !$destinationAlreadyExists && !$this->filesystem->exists(dirname($destinationFilePath));
+
+        if ($shouldNotOverwrite && $destinationAlreadyExists) {
+            return new Response('', Response::HTTP_PRECONDITION_FAILED);
+        }
+
+        if ($parentDoesNotExist) {
+            return new Response('', Response::HTTP_CONFLICT);
+        }
+
+        // @todo HTTP 207 (Multi-Status)
+        // @todo HTTP 423 (Locked)
+        // @todo HTTP 502 (Bad Gateway)
+        // @todo HTTP 507 (Insufficient Storage)
+
+        $this->filesystem->copy($sourceFilePath, $destinationFilePath, true);
+
+        if ($destinationAlreadyExists) {
+            return new Response('', Response::HTTP_NO_CONTENT);
+        }
 
         return new Response('', Response::HTTP_CREATED);
     }

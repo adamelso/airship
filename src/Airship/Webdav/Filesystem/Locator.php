@@ -21,4 +21,14 @@ class Locator
     {
         return $this->filesDir;
     }
+
+    /**
+     * @return string
+     */
+    public function resolveAbsolutePath(string $resourceRequestPath): string
+    {
+        $relativePath = ltrim('/', $resourceRequestPath);
+
+        return "{$this->filesDir}/{$relativePath}";
+    }
 }

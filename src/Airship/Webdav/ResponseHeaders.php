@@ -5,5 +5,6 @@ namespace Airship\Webdav;
 interface ResponseHeaders
 {
     const DAV = 'DAV';
-    const DEPTH = 'DEPTH';
+    const DEPTH = 'Depth';
+    const LOCATION = 'Location';
 }

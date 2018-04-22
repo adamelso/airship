@@ -74,16 +74,6 @@ class WebdavController
     }
 
     /**
-     * Will be removed once all methods are implemented.
-     *
-     * @Framework\Route("/{resource}", methods={"POST", "PROPPATCH", "COPY", "MOVE"}, name="webdav_share_resource_wip", requirements={"resource"=".+"})
-     */
-    public function resourceMethodNotYetImplementedAction(Request $request): Response
-    {
-        return new Response('', Response::HTTP_METHOD_NOT_ALLOWED);
-    }
-
-    /**
      * @Framework\Route("/", methods={"OPTIONS"}, name="webdav_share_options_index")
      * @Framework\Route("/{resource}", methods={"OPTIONS"}, name="webdav_share_options", requirements={"resource"=".+"})
      */
@@ -332,7 +322,7 @@ class WebdavController
     }
 
     /**
-     * Not used by macOS Finder it seems. When copying, it downloads the file (GET) then uploads it (PUT).
+     * Not used by macOS Finder it seems. When copying, it downloads the file first (GET), then it uploads it (PUT).
      *
      * 9.8.1.  COPY for Non-collection Resources
      * -----------------------------------------
@@ -349,16 +339,29 @@ class WebdavController
      *  Subsequent alterations to the source resource will not modify the
      *  destination resource.
      *
-     * @Framework\Route("/{resource}", methods={"COPY"}, name="webdav_share_resource_copy", requirements={"resource"=".+"})
+     *
+     * 9.9.  MOVE Method
+     * ------------------
+     *
+     *  The MOVE operation on a non-collection resource is the logical
+     *  equivalent of a copy (COPY), followed by consistency maintenance
+     *  processing, followed by a delete of the source, where all three
+     *  actions are performed in a single operation.  The consistency
+     *  maintenance step allows the server to perform updates caused by the
+     *  move, such as updating all URLs, other than the Request-URI that
+     *  identifies the source resource, to point to the new destination
+     *  resource.
+     *
+     * @Framework\Route("/{resource}", methods={"COPY", "MOVE"}, name="webdav_share_resource_copy_or_move", requirements={"resource"=".+"})
      */
-    public function copyAction(Request $request): Response
+    public function copyOrMoveAction(Request $request): Response
     {
         $resource    = $request->attributes->get('resource');
         $destination = $request->headers->get(RequestHeaders::DESTINATION);
         $overwrite   = $request->headers->get(RequestHeaders::OVERWRITE, RequestHeaderValues::OVERWRITE_T);
 
         if (! $destination) {
-            // @todo
+            // @todo HTTP 400 Bad Request?
         }
 
         $uri = new Uri($destination);
@@ -388,12 +391,38 @@ class WebdavController
         // @todo HTTP 502 (Bad Gateway)
         // @todo HTTP 507 (Insufficient Storage)
 
-        $this->filesystem->copy($sourceFilePath, $destinationFilePath, true);
+        if ($request->isMethod(RequestMethods::COPY)) {
+            $this->filesystem->copy($sourceFilePath, $destinationFilePath, true);
+        } elseif ($request->isMethod(RequestMethods::MOVE)) {
+            $this->filesystem->rename($sourceFilePath, $destinationFilePath, true);
+        }
 
         if ($destinationAlreadyExists) {
             return new Response('', Response::HTTP_NO_CONTENT);
         }
 
-        return new Response('', Response::HTTP_CREATED);
+        return new Response('', Response::HTTP_CREATED, [
+            ResponseHeaders::LOCATION => $destination,
+        ]);
+    }
+
+    /**
+     * @todo
+     *
+     * @Framework\Route("/{resource}", methods={"POST"}, name="webdav_share_resource_post", requirements={"resource"=".+"})
+     */
+    public function postAction(Request $request): Response
+    {
+        return new Response('', Response::HTTP_METHOD_NOT_ALLOWED);
+    }
+
+    /**
+     * @todo
+     *
+     * @Framework\Route("/{resource}", methods={"PROPPATCH"}, name="webdav_share_resource_proppatch", requirements={"resource"=".+"})
+     */
+    public function proppatchAction(Request $request): Response
+    {
+        return new Response('', Response::HTTP_METHOD_NOT_ALLOWED);
     }
 }
